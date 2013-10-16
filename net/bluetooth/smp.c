@@ -760,7 +760,13 @@ int smp_conn_security(struct l2cap_conn *conn, __u8 sec_level)
 
 	hcon->smp_conn = conn;
 	hcon->pending_sec_level = sec_level;
-	if (hcon->link_mode & HCI_LM_MASTER) {
+/* OPPO 2013-10-10 liuhd Modify begin for ble accessory  crash*/
+#ifdef CONFIG_VENDOR_EDIT
+	if (hcon->link_mode & HCI_LM_MASTER && !hcon->sec_req) {
+#else
+	if (hcon->link_mode & HCI_LM_MASTER ) {
+#endif
+/* OPPO 2013-10-10 liuhd Modify end */
 		struct link_key *key;
 
 		key = hci_find_link_key_type(hcon->hdev, conn->dst,

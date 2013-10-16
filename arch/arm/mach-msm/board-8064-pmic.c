@@ -612,7 +612,7 @@ apq8064_pm8921_bms_pdata __devinitdata = {
 static struct pm8xxx_vibrator_platform_data
 apq8064_pm8921_vib_pdata = {
 	.initial_vibrate_ms  = 0,
-	.level_mV = 3000,
+	.level_mV = 3100,        //zhangpan modify for N1
 	.max_timeout_ms = 15000,
 };
 /* OPPO 2012-07-25 liujun Add end */

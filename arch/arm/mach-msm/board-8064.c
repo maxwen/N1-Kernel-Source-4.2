@@ -1950,7 +1950,13 @@ static int oppo_touchscreen_power(int on)
 static int oppo_touchpad_power(int on) {
 	int rc = 0;
 
+/* OPPO 2013-10-15 ranfei Modify begin for ¼æÈÝÍâÏú°æ±¾ */
+#if 0
     if((get_pcb_version() >= PCB_VERSION_EVT3_N1T)&&(get_pcb_version() <= PCB_VERSION_PVT_N1T)) {
+#else
+	if((get_pcb_version() >= PCB_VERSION_EVT3_N1F)&&(get_pcb_version() <= PCB_VERSION_PVT_N1T)) {
+#endif
+/* OPPO 2013-10-15 ranfei Modify end */
         
         mutex_lock(&TP_BK_POWER_LOCK);
 
@@ -2011,7 +2017,7 @@ static int oppo_total_touchscreen_power(struct regulator* regula,int on)
 
 		pr_debug("[TSP] %s: power off\n", __func__);
 	}
-	pr_info("tp power %s, now:%d.\n", on?"on":"off", regulator_is_enabled(regula));
+	printk(KERN_INFO "tp power %s, now:%d.\n", on?"on":"off", regulator_is_enabled(regula));
 
 oppo_tp_power_return:
 	return rc;
@@ -3891,7 +3897,7 @@ struct gpio_keys_button camera_rotate_keys[] = {
 		.can_disable       = true,
 	},
     {
-		.code              = KEY_F2,
+		.code              = KEY_F1,
         .gpio              = GPIO_KEY_MR2,
 		.active_low        = 1,
 		.desc              = "MRsensor_key2",

@@ -93,14 +93,14 @@ static void l2cap_chan_ready(struct sock *sk);
 static void l2cap_conn_del(struct hci_conn *hcon, int err, u8 is_process);
 static u16 l2cap_get_smallest_flushto(struct l2cap_chan_list *l);
 static void l2cap_set_acl_flushto(struct hci_conn *hcon, u16 flush_to);
-static void l2cap_queue_acl_data(struct work_struct *worker);
+//static void l2cap_queue_acl_data(struct work_struct *worker);
 static void l2cap_queue_smp_data(struct work_struct *worker);
-static struct att_channel_parameters{
-	struct sk_buff *skb;
-	struct l2cap_conn *conn;
-	__le16 cid;
-	int dir;
-} att_chn_params;
+//static struct att_channel_parameters{
+//	struct sk_buff *skb;
+//	struct l2cap_conn *conn;
+//	__le16 cid;
+//	int dir;
+//} att_chn_params;
 static struct smp_channel_params{
 	struct sk_buff *skb;
 	struct l2cap_conn *conn;
@@ -1227,9 +1227,9 @@ static void l2cap_conn_del(struct hci_conn *hcon, int err, u8 is_process)
 
 		kfree(conn);
 	}
-	att_chn_params.conn = NULL;
+	//att_chn_params.conn = NULL;
   smp_chn_params.conn = NULL;
-	BT_DBG("att_chn_params.conn set to NULL");
+	//BT_DBG("att_chn_params.conn set to NULL");
 }
 
 static inline void l2cap_chan_add(struct l2cap_conn *conn, struct sock *sk)
@@ -7295,7 +7295,7 @@ static inline int l2cap_att_channel(struct l2cap_conn *conn, __le16 cid,
 	struct sk_buff *skb_rsp;
 	struct l2cap_hdr *lh;
 	int dir;
-	struct work_struct *open_worker;
+	//struct work_struct *open_worker;
 	u8 err_rsp[] = {L2CAP_ATT_ERROR, 0x00, 0x00, 0x00,
 						L2CAP_ATT_NOT_SUPPORTED};
 
@@ -7332,16 +7332,17 @@ static inline int l2cap_att_channel(struct l2cap_conn *conn, __le16 cid,
 	BT_DBG("sk %p, len %d", sk, skb->len);
 
 	if (sk->sk_state != BT_BOUND && sk->sk_state != BT_CONNECTED) {
-		att_chn_params.cid = cid;
-		att_chn_params.conn = conn;
-		att_chn_params.dir = dir;
-		att_chn_params.skb = skb;
-		open_worker = kzalloc(sizeof(*open_worker), GFP_ATOMIC);
-		if (!open_worker)
-			BT_ERR("Out of memory");
-		INIT_WORK(open_worker, l2cap_queue_acl_data);
-		schedule_work(open_worker);
-		goto done;
+		//att_chn_params.cid = cid;
+		//att_chn_params.conn = conn;
+		//att_chn_params.dir = dir;
+		//att_chn_params.skb = skb;
+		//open_worker = kzalloc(sizeof(*open_worker), GFP_ATOMIC);
+		//if (!open_worker)
+		//	BT_ERR("Out of memory");
+		//INIT_WORK(open_worker, l2cap_queue_acl_data);
+		//schedule_work(open_worker);
+		//goto done;
+		goto drop;
 	}
 
 	if (l2cap_pi(sk)->imtu < skb->len)
@@ -7912,7 +7913,7 @@ err:
 	l2cap_conn_del(smp_chn_params.conn->hcon, EACCES, 0);
 }
 
-
+/*
 static void l2cap_queue_acl_data(struct work_struct *worker)
 {
 	struct sock *sk = NULL;
@@ -7933,12 +7934,12 @@ static void l2cap_queue_acl_data(struct work_struct *worker)
 				att_chn_params.conn->src,
 				att_chn_params.conn->dst,
 				att_chn_params.dir);
-/* OPPO 2013-09-24 liuhd Add begin for ble  accessorie cause system crash*/
+// OPPO 2013-09-24 liuhd Add begin for ble  accessorie cause system crash//
 #ifdef CONFIG_VENDOR_EDIT
 		if (!sk)
 			goto drop;
 #endif //CONFIG_VENDOR_EDIT
-/* OPPO 2013-09-24 liuhd Add end */
+// OPPO 2013-09-24 liuhd Add end //
 		bh_lock_sock(sk);
 		if (sk->sk_state == BT_CONNECTED) {
 			sock_queue_rcv_skb(sk, att_chn_params.skb);
@@ -7949,15 +7950,15 @@ static void l2cap_queue_acl_data(struct work_struct *worker)
 		bh_unlock_sock(sk);
 	}
 	bh_lock_sock(sk);
-/* OPPO 2013-09-24 liuhd Add begin for ble  accessorie cause system crash*/
+// OPPO 2013-09-24 liuhd Add begin for ble  accessorie cause system crash//
 #ifdef CONFIG_VENDOR_EDIT
 drop:
 #endif //CONFIG_VENDOR_EDIT
-/* OPPO 2013-09-24 liuhd Add end */
+// OPPO 2013-09-24 liuhd Add end //
 	if (att_chn_params.skb->data[0] != L2CAP_ATT_INDICATE)
 		goto not_indicate;
 
-	/* If this is an incoming Indication, we are required to confirm */
+	// If this is an incoming Indication, we are required to confirm //
 	skb_rsp = bt_skb_alloc(sizeof(u8) + L2CAP_HDR_SIZE, GFP_ATOMIC);
 	if (!skb_rsp)
 		goto free_skb;
@@ -7975,8 +7976,8 @@ not_indicate:
 			att_chn_params.skb->data[0] == L2CAP_ATT_CONFIRM)
 		goto free_skb;
 
-	/* If this is an incoming PDU that requires a response, respond with
-	 * a generic error so remote device doesn't hang */
+	// If this is an incoming PDU that requires a response, respond with
+	 // a generic error so remote device doesn't hang //
 
 	skb_rsp = bt_skb_alloc(sizeof(err_rsp) + L2CAP_HDR_SIZE, GFP_ATOMIC);
 	if (!skb_rsp)
@@ -7995,7 +7996,7 @@ free_skb:
 	if (sk)
 		bh_unlock_sock(sk);
 
-}
+}*/
 
 static int l2cap_debugfs_open(struct inode *inode, struct file *file)
 {

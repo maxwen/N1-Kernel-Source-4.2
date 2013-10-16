@@ -172,6 +172,7 @@ int lm3630_bkl_control(unsigned char bkl_level)
 
     if(bkl_level == 0)
     {
+        rc = lm3630_i2c_write(0x03, 0x00);
         rc = lm3630_i2c_write(0x00, 0x9f);
         sleep_mode = true;
         pr_info("%s: Neal lm3630_client sleep rc = %d\n", __func__,rc);
@@ -179,10 +180,17 @@ int lm3630_bkl_control(unsigned char bkl_level)
     }
     if(sleep_mode == true)
     {
-
+        int rc = 0;
+        pr_debug("%s: Neal lm3630_client wake up rc = %d\n", __func__,rc);
         rc = lm3630_i2c_write(0x00, 0x1f);
-        sleep_mode= false;
-		mdelay(10);
+		sleep_mode= false;
+        mdelay(10);
+        rc = lm3630_i2c_write(0x01, 0x18);
+        rc = lm3630_i2c_write(0x02, 0x79);
+        rc = lm3630_i2c_write(0x05, 0x14);
+        rc = lm3630_i2c_write(0x06, 0x14);
+        rc = lm3630_i2c_write(0x07, 0x00);
+        rc = lm3630_i2c_write(0x08, 0x00);
     }
     rc = lm3630_i2c_write(0x03, bkl_level);
     pr_debug("%s: Neal lm3630_client set bkl level = %d, rc = %d\n", __func__,(int)bkl_level,rc);
@@ -269,44 +277,20 @@ static int lm3630_i2c_remove(struct i2c_client *client)
 }
 static int lm3630_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-    int rc=0 ;
     if(bk_device_3528 == true)
     {
         return 0;
     }
     printk("%s:backlight suspend.\n", __func__);
-    rc = gpio_direction_output(LM_ENABLE_GPIO, 0);
-    if (rc)
-    {
-        pr_err("%s: unable to enable!!!!!!!!!!!!\n", __func__);
-        return rc;
-    }
-
     return 0;
 }
 static int lm3630_resume(struct i2c_client *client)
 {
-    int rc ;
     if(bk_device_3528 == true)
     {
         return 0;
     }
-    printk("%s: backlight resume.\n", __func__);
-    rc = gpio_direction_output(LM_ENABLE_GPIO, 1);
-    if (rc)
-    {
-        pr_err("%s: unable to enable!!!!!!!!!!!!\n", __func__);
-        return rc;
-    }
-    mdelay(10);
-    rc = lm3630_i2c_write(0x00, 0x1f);
-    rc = lm3630_i2c_write(0x01, 0x18);
-    rc = lm3630_i2c_write(0x02, 0x79);
-    rc = lm3630_i2c_write(0x05, 0x14);
-    rc = lm3630_i2c_write(0x06, 0x14);
-    rc = lm3630_i2c_write(0x07, 0x00);
-    rc = lm3630_i2c_write(0x08, 0x00);
-    rc = lm3630_i2c_write(0x0f, 0x00);
+    pr_info("lm3630 resume\n");
     return 0;
 }
 

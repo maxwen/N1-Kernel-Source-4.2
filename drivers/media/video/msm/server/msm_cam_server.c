@@ -1805,7 +1805,7 @@ static void msm_cam_server_subdev_notify(struct v4l2_subdev *sd,
 				p_mctl->vfe_sdev, notification, arg);
 		
 		/* OPPO 2013-07-29 lanhe Add for m9m0 caf start */
-		if(notification == NOTIFY_VFE_BUF_EVT)
+		if(notification == NOTIFY_VFE_PIX_SOF_COUNT)
 		{
 			struct sensor_cfg_data cfgarg;
 			cfgarg.cfgtype = CFG_FRAME_NOTIFICATION;

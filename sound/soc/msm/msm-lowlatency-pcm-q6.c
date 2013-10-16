@@ -320,7 +320,14 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 		kfree(prtd);
 		return -ENOMEM;
 	}
+	/*OPPO 2013-10-10 zhzhyon Modify for weixin pop*/
+	#ifndef CONFIG_VENDOR_EDIT
 	prtd->audio_client->perf_mode = true;
+	#else
+	prtd->audio_client->perf_mode = false;
+	#endif
+	/*OPPO 2013-10-10 zhzhyon Modify end*/	
+	
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		runtime->hw = msm_pcm_hardware_playback;
 		ret = q6asm_open_write(prtd->audio_client,

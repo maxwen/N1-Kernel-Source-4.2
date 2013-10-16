@@ -39,6 +39,11 @@ static int sockets_enabled;
 static struct proto msm_ipc_proto;
 static const struct proto_ops msm_ipc_proto_ops;
 
+//Peirs@OnLineRD.framework, remove the security patch to avoid system crash
+//when some process without permissions such as mediaServer call msm_ipc_router_create
+//frequently may cause permissions check failed log to logout frequently which cause system
+//crash, 2013.09.27, begin:
+/*
 #ifdef CONFIG_ANDROID_PARANOID_NETWORK
 static inline int check_permissions(void)
 {
@@ -53,6 +58,13 @@ static inline int check_permissions(void)
 	return 1;
 }
 #endif
+*/
+static inline int check_permissions(void)
+{
+	return 1;
+}
+//Peirs@OnLineRD.framework, 2013.09.27, end.
+
 
 static struct sk_buff_head *msm_ipc_router_build_msg(unsigned int num_sect,
 					  struct iovec const *msg_sect,

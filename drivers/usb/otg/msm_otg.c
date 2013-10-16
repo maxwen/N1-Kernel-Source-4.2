@@ -75,7 +75,7 @@
 #define USB_PHY_VDD_DIG_VOL_MAX	1320000 /* uV */
 
 /* OPPO 2012-08-08 chendx Add begin for reason */
-#define USB_NONSTANDARD_DET_DELAY	msecs_to_jiffies(1500)
+#define USB_NONSTANDARD_DET_DELAY	msecs_to_jiffies(1650)//(1500) sjc0925 modify to 1650
 
 static int cancel_nonstandard_worker = 0;
 /* OPPO 2012-08-08 chendx Add end */
@@ -163,7 +163,7 @@ static const int vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX] = {
 static int msm_hsusb_ldo_init(struct msm_otg *motg, int init)
 {
 	int rc = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (init) {
 		hsusb_3p3 = devm_regulator_get(motg->phy.dev, "HSUSB_3p3");
 		if (IS_ERR(hsusb_3p3)) {
@@ -209,7 +209,7 @@ static int msm_hsusb_config_vddcx(int high)
 	int max_vol = vdd_val[vdd_type][VDD_MAX];
 	int min_vol;
 	int ret;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	min_vol = vdd_val[vdd_type][!!high];
 	ret = regulator_set_voltage(hsusb_vddcx, min_vol, max_vol);
 	if (ret) {
@@ -226,7 +226,7 @@ static int msm_hsusb_config_vddcx(int high)
 static int msm_hsusb_ldo_enable(struct msm_otg *motg, int on)
 {
 	int ret = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (IS_ERR(hsusb_1p8)) {
 		pr_err("%s: HSUSB_1p8 is not initialized\n", __func__);
 		return -ENODEV;
@@ -306,7 +306,7 @@ static int msm_hsusb_ldo_enable(struct msm_otg *motg, int on)
 static void msm_hsusb_mhl_switch_enable(struct msm_otg *motg, bool on)
 {
 	struct msm_otg_platform_data *pdata = motg->pdata;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!pdata->mhl_enable)
 		return;
 
@@ -327,7 +327,7 @@ static int ulpi_read(struct usb_phy *phy, u32 reg)
 {
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
 	int cnt = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	/* initiate read operation */
 	writel(ULPI_RUN | ULPI_READ | ULPI_ADDR(reg),
 	       USB_ULPI_VIEWPORT);
@@ -352,7 +352,7 @@ static int ulpi_write(struct usb_phy *phy, u32 val, u32 reg)
 {
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
 	int cnt = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	/* initiate write operation */
 	writel(ULPI_RUN | ULPI_WRITE |
 	       ULPI_ADDR(reg) | ULPI_DATA(val),
@@ -382,7 +382,7 @@ static void ulpi_init(struct msm_otg *motg)
 {
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	int *seq = pdata->phy_init_seq;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!seq)
 		return;
 
@@ -397,7 +397,7 @@ static void ulpi_init(struct msm_otg *motg)
 static int msm_otg_link_clk_reset(struct msm_otg *motg, bool assert)
 {
 	int ret;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (assert) {
 		if (!IS_ERR(motg->clk)) {
 			ret = clk_reset(motg->clk, CLK_RESET_ASSERT);
@@ -429,7 +429,7 @@ static int msm_otg_link_clk_reset(struct msm_otg *motg, bool assert)
 static int msm_otg_phy_clk_reset(struct msm_otg *motg)
 {
 	int ret;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (IS_ERR(motg->phy_reset_clk))
 		return 0;
 
@@ -450,7 +450,7 @@ static int msm_otg_phy_reset(struct msm_otg *motg)
 	u32 val;
 	int ret;
 	int retries;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	ret = msm_otg_link_clk_reset(motg, 1);
 	if (ret)
 		return ret;
@@ -500,7 +500,7 @@ static int msm_otg_phy_reset(struct msm_otg *motg)
 static int msm_otg_link_reset(struct msm_otg *motg)
 {
 	int cnt = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	writel_relaxed(USBCMD_RESET, USB_USBCMD);
 	while (cnt < LINK_RESET_TIMEOUT_USEC) {
 		if (!(readl_relaxed(USB_USBCMD) & USBCMD_RESET))
@@ -526,7 +526,7 @@ static int msm_otg_reset(struct usb_phy *phy)
 	int ret;
 	u32 val = 0;
 	u32 ulpi_val = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	/*
 	 * USB PHY and Link reset also reset the USB BAM.
 	 * Thus perform reset operation only once to avoid
@@ -605,7 +605,7 @@ static const char *timer_string(int bit)
 static enum hrtimer_restart msm_otg_timer_func(struct hrtimer *hrtimer)
 {
 	struct msm_otg *motg = container_of(hrtimer, struct msm_otg, timer);
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->active_tmout) {
 	case A_WAIT_VRISE:
 		/* TODO: use vbus_vld interrupt */
@@ -637,7 +637,7 @@ static enum hrtimer_restart msm_otg_timer_func(struct hrtimer *hrtimer)
 static void msm_otg_del_timer(struct msm_otg *motg)
 {
 	int bit = motg->active_tmout;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	pr_debug("deleting %s timer. remaining %lld msec\n", timer_string(bit),
 			div_s64(ktime_to_us(hrtimer_get_remaining(
 					&motg->timer)), 1000));
@@ -647,7 +647,7 @@ static void msm_otg_del_timer(struct msm_otg *motg)
 
 static void msm_otg_start_timer(struct msm_otg *motg, int time, int bit)
 {
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	clear_bit(bit, &motg->tmouts);
 	motg->active_tmout = bit;
 	pr_debug("starting %s timer\n", timer_string(bit));
@@ -665,7 +665,7 @@ static void msm_otg_init_timer(struct msm_otg *motg)
 static int msm_otg_start_hnp(struct usb_otg *otg)
 {
 	struct msm_otg *motg = container_of(otg->phy, struct msm_otg, phy);
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (otg->phy->state != OTG_STATE_A_HOST) {
 		pr_err("HNP can not be initiated in %s state\n",
 				otg_state_string(otg->phy->state));
@@ -683,7 +683,7 @@ static int msm_otg_start_srp(struct usb_otg *otg)
 	struct msm_otg *motg = container_of(otg->phy, struct msm_otg, phy);
 	u32 val;
 	int ret = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (otg->phy->state != OTG_STATE_B_IDLE) {
 		pr_err("SRP can not be initiated in %s state\n",
 				otg_state_string(otg->phy->state));
@@ -724,7 +724,7 @@ static void msm_otg_host_hnp_enable(struct usb_otg *otg, bool enable)
 {
 	struct usb_hcd *hcd = bus_to_hcd(otg->host);
 	struct usb_device *rhub = otg->host->root_hub;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (enable) {
 		pm_runtime_disable(&rhub->dev);
 		rhub->state = USB_STATE_NOTATTACHED;
@@ -740,7 +740,7 @@ static void msm_otg_host_hnp_enable(struct usb_otg *otg, bool enable)
 static int msm_otg_set_suspend(struct usb_phy *phy, int suspend)
 {
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (aca_enabled())
 		return 0;
 
@@ -1158,7 +1158,7 @@ static int msm_otg_notify_chg_type(struct msm_otg *motg)
 
 static int msm_otg_notify_power_supply(struct msm_otg *motg, unsigned mA)
 {
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!psy)
 		goto psy_not_supported;
 
@@ -1186,7 +1186,7 @@ psy_not_supported:
 static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 {
 	struct usb_gadget *g = motg->phy.otg->gadget;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (g && g->is_a_peripheral)
 		return;
 
@@ -1225,7 +1225,7 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 static int msm_otg_set_power(struct usb_phy *phy, unsigned mA)
 {
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 
 	/* OPPO 2012-08-09 chendx Add begin for nonstanard detect */
 	/**
@@ -1266,7 +1266,7 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 	struct msm_otg *motg = container_of(otg->phy, struct msm_otg, phy);
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	struct usb_hcd *hcd;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!otg->host)
 		return;
 
@@ -1309,7 +1309,7 @@ static int msm_otg_usbdev_notify(struct notifier_block *self,
 	struct msm_otg *motg = container_of(self, struct msm_otg, usbdev_nb);
 	struct usb_otg *otg = motg->phy.otg;
 	struct usb_device *udev = priv;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (action == USB_BUS_ADD || action == USB_BUS_REMOVE)
 		goto out;
 
@@ -1381,7 +1381,7 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 {
 	int ret;
 	static bool vbus_is_on;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (vbus_is_on == on)
 		return;
 
@@ -1430,7 +1430,7 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 {
 	struct msm_otg *motg = container_of(otg->phy, struct msm_otg, phy);
 	struct usb_hcd *hcd;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	/*
 	 * Fail host registration if this board can support
 	 * only peripheral configuration.
@@ -1494,7 +1494,7 @@ static void msm_otg_start_peripheral(struct usb_otg *otg, int on)
 	int ret;
 	struct msm_otg *motg = container_of(otg->phy, struct msm_otg, phy);
 	struct msm_otg_platform_data *pdata = motg->pdata;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!otg->gadget)
 		return;
 
@@ -1538,7 +1538,7 @@ static int msm_otg_set_peripheral(struct usb_otg *otg,
 			struct usb_gadget *gadget)
 {
 	struct msm_otg *motg = container_of(otg->phy, struct msm_otg, phy);
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	/*
 	 * Fail peripheral registration if this board can support
 	 * only host configuration.
@@ -1580,7 +1580,7 @@ static bool msm_otg_read_pmic_id_state(struct msm_otg *motg)
 {
 	unsigned long flags;
 	int id;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!motg->pdata->pmic_id_irq)
 		return -ENODEV;
 
@@ -1601,7 +1601,7 @@ static int msm_otg_mhl_register_callback(struct msm_otg *motg,
 {
 	struct usb_phy *phy = &motg->phy;
 	int ret;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (motg->pdata->otg_control != OTG_PMIC_CONTROL ||
 			!motg->pdata->pmic_id_irq) {
 		dev_dbg(phy->dev, "MHL can not be supported without PMIC Id\n");
@@ -1651,7 +1651,7 @@ static bool msm_otg_is_mhl(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	int is_mhl, ret;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	ret = mhl_device_discovery(motg->pdata->mhl_dev_name, &is_mhl);
 	if (ret || is_mhl != MHL_DISCOVERY_RESULT_MHL) {
 		/*
@@ -1673,7 +1673,7 @@ static bool msm_otg_is_mhl(struct msm_otg *motg)
 static bool msm_chg_mhl_detect(struct msm_otg *motg)
 {
 	bool ret, id;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!motg->mhl_enabled)
 		return false;
 
@@ -1694,7 +1694,7 @@ static bool msm_chg_aca_detect(struct msm_otg *motg)
 	struct usb_phy *phy = &motg->phy;
 	u32 int_sts;
 	bool ret = false;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!aca_enabled())
 		goto out;
 
@@ -1771,7 +1771,7 @@ out:
 static void msm_chg_enable_aca_det(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!aca_enabled())
 		return;
 
@@ -1797,7 +1797,7 @@ static void msm_chg_enable_aca_det(struct msm_otg *motg)
 static void msm_chg_enable_aca_intr(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!aca_enabled())
 		return;
 
@@ -1814,7 +1814,7 @@ static void msm_chg_enable_aca_intr(struct msm_otg *motg)
 static void msm_chg_disable_aca_intr(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!aca_enabled())
 		return;
 
@@ -1831,7 +1831,7 @@ static bool msm_chg_check_aca_intr(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	bool ret = false;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!aca_enabled())
 		return ret;
 
@@ -1851,7 +1851,7 @@ static bool msm_chg_check_aca_intr(struct msm_otg *motg)
 static void msm_otg_id_timer_func(unsigned long data)
 {
 	struct msm_otg *motg = (struct msm_otg *) data;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (!aca_enabled())
 		return;
 
@@ -1878,7 +1878,7 @@ static bool msm_chg_check_secondary_det(struct msm_otg *motg)
 	struct usb_phy *phy = &motg->phy;
 	u32 chg_det;
 	bool ret = false;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x34);
@@ -1898,7 +1898,7 @@ static void msm_chg_enable_secondary_det(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	u32 chg_det;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x34);
@@ -1939,7 +1939,7 @@ static bool msm_chg_check_primary_det(struct msm_otg *motg)
 	struct usb_phy *phy = &motg->phy;
 	u32 chg_det;
 	bool ret = false;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x34);
@@ -1962,7 +1962,7 @@ static void msm_chg_enable_primary_det(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	u32 chg_det;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x34);
@@ -1988,7 +1988,7 @@ static bool msm_chg_check_dcd(struct msm_otg *motg)
 	struct usb_phy *phy = &motg->phy;
 	u32 line_state;
 	bool ret = false;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		line_state = ulpi_read(phy, 0x15);
@@ -2008,7 +2008,7 @@ static void msm_chg_disable_dcd(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	u32 chg_det;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x34);
@@ -2027,7 +2027,7 @@ static void msm_chg_enable_dcd(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	u32 chg_det;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x34);
@@ -2048,7 +2048,7 @@ static void msm_chg_block_on(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	u32 func_ctrl, chg_det;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	/* put the controller in non-driving mode */
 	func_ctrl = ulpi_read(phy, ULPI_FUNC_CTRL);
 	func_ctrl &= ~ULPI_FUNC_CTRL_OPMODE_MASK;
@@ -2085,7 +2085,7 @@ static void msm_chg_block_off(struct msm_otg *motg)
 {
 	struct usb_phy *phy = &motg->phy;
 	u32 func_ctrl, chg_det;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (motg->pdata->phy_type) {
 	case CI_45NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x34);
@@ -2344,7 +2344,7 @@ static void nonstandard_detect_work(struct work_struct *w)
 		else {
 			if (motg->chg_type == USB_NON_DCP_CHARGER)//sjc test 2013-07-08
 				smb358_charger_connected(CHARGER_TYPE__NON_DCP);
-			else
+			else if (motg->chg_type == USB_HDMI_CHARGER)//sjc0925
 				smb358_charger_connected(CHARGER_TYPE__HDMI);//sjc test 2013-07-08
 		}
 	}else if (motg->chg_type != USB_SDP_CHARGER){
@@ -3219,7 +3219,7 @@ static void msm_otg_set_vbus_state(int online)
 	static bool init;
 	struct msm_otg *motg = the_msm_otg;
 	struct usb_otg *otg = motg->phy.otg;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	/* In A Host Mode, ignore received BSV interrupts */
 	if (otg->phy->state >= OTG_STATE_A_IDLE)
 		return;
@@ -3283,7 +3283,7 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 static irqreturn_t msm_pmic_id_irq(int irq, void *data)
 {
 	struct msm_otg *motg = data;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (test_bit(MHL, &motg->inputs) ||
 			mhl_det_in_progress) {
 		pr_debug("PMIC: Id interrupt ignored in MHL\n");
@@ -3302,7 +3302,7 @@ static int msm_otg_mode_show(struct seq_file *s, void *unused)
 {
 	struct msm_otg *motg = s->private;
 	struct usb_phy *phy = &motg->phy;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	switch (phy->state) {
 	case OTG_STATE_A_HOST:
 		seq_printf(s, "host\n");
@@ -3540,7 +3540,7 @@ static struct dentry *msm_otg_dbg_root;
 static int msm_otg_debugfs_init(struct msm_otg *motg)
 {
 	struct dentry *msm_otg_dentry;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	msm_otg_dbg_root = debugfs_create_dir("msm_otg", NULL);
 
 	if (!msm_otg_dbg_root || IS_ERR(msm_otg_dbg_root))
@@ -4076,7 +4076,7 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 	struct msm_otg *motg = platform_get_drvdata(pdev);
 	struct usb_otg *otg = motg->phy.otg;
 	int cnt = 0;
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	if (otg->host || otg->gadget)
 		return -EBUSY;
 
@@ -4185,7 +4185,7 @@ static int msm_otg_pm_suspend(struct device *dev)
 {
 	int ret = 0;
 	struct msm_otg *motg = dev_get_drvdata(dev);
-	printk("songxh %s\n", __func__);
+	//printk("songxh %s\n", __func__);
 	dev_dbg(dev, "OTG PM suspend\n");
 
 	atomic_set(&motg->pm_suspended, 1);

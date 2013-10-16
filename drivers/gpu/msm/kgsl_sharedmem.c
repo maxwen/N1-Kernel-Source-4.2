@@ -593,6 +593,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 		KGSL_CORE_ERR("kmalloc (%d) failed\n",
 			sglen_alloc * sizeof(struct page *));
 		ret = -ENOMEM;
+		pr_info("Neal %s kmalloc failed!\n",__func__);
 		goto done;
 	}
 
@@ -714,7 +715,13 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 		kgsl_driver.stats.histogram[order]++;
 
 done:
+/* OPPO 2013-10-16 gousj Modify begin for incorrect memory free caused system crash */
+#ifndef CONFIG_VENDOR_EDIT
 	kfree(pages);
+#else
+	kfree(&(*pages));
+#endif
+/* OPPO 2013-10-16 gousj Modify end */
 
 	if (ret)
 		kgsl_sharedmem_free(memdesc);
