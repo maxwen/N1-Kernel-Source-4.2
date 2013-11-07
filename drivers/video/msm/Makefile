@@ -6,6 +6,10 @@ ifeq ($(INIT_DEVICE_N1T), true)
 obj-y := msm_fb.o
 endif
 
+ifeq ($(INIT_DEVICE_N1W), true)
+obj-y := msm_fb.o
+endif
+
 ifeq ($(INIT_DEVICE_N1F), true)
 obj-y := msm_fb.o
 endif
@@ -95,6 +99,10 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 
 # OPPO Neal modify for n1
 ifeq ($(INIT_DEVICE_N1T), true)
+obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise_n1.o
+endif
+
+ifeq ($(INIT_DEVICE_N1W), true)
 obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise_n1.o
 endif
 
@@ -233,6 +241,10 @@ obj-$(CONFIG_MSM_VIDC_720P) += vidc/
 
 # OPPO Neal modify for n1
 ifeq ($(INIT_DEVICE_N1T), true)
+obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3630) += lm3630_bl.o
+endif
+
+ifeq ($(INIT_DEVICE_N1W), true)
 obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3630) += lm3630_bl.o
 endif
 

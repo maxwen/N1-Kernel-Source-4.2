@@ -86,27 +86,39 @@ obj-$(CONFIG_TOUCHSCREEN_LGE_SYNAPTICS) += touch_synaptics_ds4_fw_upgrade.o
 ifeq ($(INIT_DEVICE_N1T), true)
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_s3202_i2c_rmi_n1.o
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_update_firmware_n1.o
-	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
+# ranfei delete the redremote
+#	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
 	obj-$(CONFIG_TOUCHSCREEN_BKTP) += touch_y8c20x66a.o
 endif
 
 ifeq ($(INIT_DEVICE_N1F), true)
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_s3202_i2c_rmi_n1.o
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_update_firmware_n1.o
-	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
+# ranfei delete the redremote
+#	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
+	obj-$(CONFIG_TOUCHSCREEN_BKTP) += touch_y8c20x66a.o
+endif
+
+# ranfei add for N1W
+ifeq ($(INIT_DEVICE_N1W), true)
+	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_s3202_i2c_rmi_n1.o
+	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_update_firmware_n1.o
+#	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
 	obj-$(CONFIG_TOUCHSCREEN_BKTP) += touch_y8c20x66a.o
 endif
 
 ifeq ($(INIT_DEVICE_X909), true)
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_s3202_i2c_rmi.o
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_update_firmware.o
-	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
+# ranfei delete the redremote
+#	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
 endif
 
 ifeq ($(INIT_DEVICE_X909T), true)
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_s3202_i2c_rmi.o
 	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_update_firmware.o
-	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
+# ranfei delete the redremote
+#	obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_S3202_I2C_RMI) += synaptics_dsx_rmi_dev.o
 endif
 
 

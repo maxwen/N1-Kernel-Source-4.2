@@ -45,7 +45,7 @@ unsigned long flags;
 /* OPPO 2013-09-30 gousj Add end */
 
 /*OPPO 2013-09-11 zhzhyon Add for SRE*/
-#define PANEL_SRE
+//#define PANEL_SRE
 /*OPPO 2013-09-11 zhzhyon Add end*/
 
 extern struct platform_device *g_mdp_dev;
@@ -189,7 +189,6 @@ static char display_off[2] =
     0x00,
 };
 
-
 static char sleep_in[2] =
 {
     0x10,   //sleep in
@@ -225,6 +224,12 @@ static char nvm_disable[] =
 {
     0xd6,
     0x01
+};
+
+static char cabc_min_brightness[2] =
+{
+    0x5e,
+    0x1e
 };
 
 static char color_enhance[] =
@@ -266,6 +271,137 @@ static char color_enhance[] =
     0x3f,
     0x3f
 };
+/*OPPO 2013-10-11 zhzhyon Add for reason*/
+#ifdef PANEL_SRE
+static char sre_off[2] =
+{
+    0x55, 0x00
+};
+static char sre_manual_mode[2] =
+{
+    0x55, 0x40
+};
+static char sre_weak_mode[2] =
+{
+    0x55, 0x50
+};
+static char sre_middle_mode[2] =
+{
+    0x55, 0x60
+};
+static char sre_strong_mode[2] =
+{
+    0x55, 0x70
+};
+
+
+static struct dsi_cmd_desc sre_off_sequence[] =
+{
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(sre_off), sre_off
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
+};
+
+static struct dsi_cmd_desc sre_manual_mode_sequence[] =
+{
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(sre_manual_mode), sre_manual_mode
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
+};
+
+static struct dsi_cmd_desc sre_weak_mode_sequence[] =
+{
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(sre_weak_mode), sre_weak_mode
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
+};
+
+static struct dsi_cmd_desc sre_middle_mode_sequence[] =
+{
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(sre_middle_mode), sre_middle_mode
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
+};
+
+static struct dsi_cmd_desc sre_strong_mode_sequence[] =
+{
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(sre_strong_mode), sre_strong_mode
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
+};
+
+static int set_sre_resume_mode(int level)
+{
+    int ret = 0;
+    switch(level)
+    {
+        case 0:
+            sre_off[1] = sre_off[1] | cabc_mode;
+            mipi_dsi_cmds_tx(&orise_tx_buf, sre_off_sequence,
+                             ARRAY_SIZE(sre_off_sequence));
+            sre_off[1] = 0x00;
+            break;
+        case 1:
+            sre_weak_mode[1] = sre_weak_mode[1] | cabc_mode;
+            mipi_dsi_cmds_tx(&orise_tx_buf, sre_weak_mode_sequence,
+                             ARRAY_SIZE(sre_weak_mode_sequence));
+            sre_weak_mode[1] = 0x50;
+            break;
+        case 2:
+            sre_middle_mode[1] = sre_middle_mode[1] | cabc_mode;
+            mipi_dsi_cmds_tx(&orise_tx_buf, sre_middle_mode_sequence,
+                             ARRAY_SIZE(sre_middle_mode_sequence));
+            sre_middle_mode[1] = 0x60;
+            break;
+        case 3:
+            sre_strong_mode[1] = sre_strong_mode[1] | cabc_mode;
+            mipi_dsi_cmds_tx(&orise_tx_buf, sre_strong_mode_sequence,
+                             ARRAY_SIZE(sre_strong_mode_sequence));
+            sre_strong_mode[1] = 0x70;
+            break;
+        case 4:
+            sre_manual_mode[1] = sre_manual_mode[1] | cabc_mode;
+            mipi_dsi_cmds_tx(&orise_tx_buf, sre_manual_mode_sequence,
+                             ARRAY_SIZE(sre_manual_mode_sequence));
+            sre_manual_mode[1] = 0x40;
+
+        default:
+            pr_err("%s Level %d is not supported!\n",__func__,level);
+            ret = -1;
+            break;
+    }
+    printk(KERN_INFO "set sre mode %d finished\n",level);
+
+    return ret;
+}
+#endif
+/*OPPO 2013-10-11 zhzhyon Add end*/
+
 
 /*OPPO Neal add 2013-8-13 for cabc*/
 #ifdef PANEL_CABC
@@ -276,18 +412,20 @@ static char cabc_video_image[2] = { 0x55, 0x03};
 
 static char cabc_movie_bl_ctr[] = { 0x07,0xba,0x00,0x78,0x64,0x10,0x64,0xff};
 
-/* OPPO 2013-10-15 gousj Add begin for cabc flicker */
-#ifdef CONFIG_VENDOR_EDIT
-static char cabc_min_brightness[2] = { 0x5e, 0x0b};
-#endif
-/* OPPO 2013-10-15 gousj Add end */
-
 static struct dsi_cmd_desc cabc_off_sequence[] =
 {
     {
         DTYPE_DCS_WRITE1, 1, 0, 0, 10,
         sizeof(cabc_off), cabc_off
     },
+    /*OPPO 2013-10-18 zhzhyon Add for reason*/
+#ifdef PANEL_SRE
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(sre_off), sre_off
+    },
+#endif
+    /*OPPO 2013-10-18 zhzhyon Add end*/
     {
         DTYPE_DCS_WRITE, 1, 0, 0, 10,
         sizeof(display_on), display_on
@@ -322,7 +460,7 @@ static struct dsi_cmd_desc cabc_video_image_sequence[] =
 {
 
     {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+        DTYPE_GEN_LWRITE, 1, 0, 0, 0,
         sizeof(cabc_min_brightness), cabc_min_brightness
     },
     {
@@ -343,7 +481,6 @@ static struct dsi_cmd_desc cabc_video_image_sequence[] =
 
 static struct dsi_cmd_desc cmd_mipi_initial_sequence[] =
 {
-
     {
         DTYPE_GEN_LWRITE, 1, 0, 0, 0,
         sizeof(protect_off), protect_off
@@ -379,13 +516,12 @@ static struct dsi_cmd_desc cmd_mipi_initial_sequence[] =
         sizeof(brightness_setting_N1), brightness_setting_N1
     },
     {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 0,
-        sizeof(bkl_control_N1), bkl_control_N1
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(cabc_control), cabc_control
     },
-
     {
         DTYPE_DCS_WRITE1, 1, 0, 0, 0,
-        sizeof(cabc_control), cabc_control
+        sizeof(bkl_control_N1), bkl_control_N1
     },
 
     {
@@ -397,6 +533,8 @@ static struct dsi_cmd_desc cmd_mipi_initial_sequence[] =
         DTYPE_DCS_WRITE1, 1, 0, 0, 0,
         sizeof(tear_scan), tear_scan
     },
+
+
 
     {
         DTYPE_DCS_WRITE, 1, 0, 0, 0,
@@ -544,127 +682,6 @@ static int set_cabc_resume_mode(int mode)
 #endif
 /*OPPO 2013-09-27 zhzhyon Add end*/
 
-/*OPPO 2013-10-11 zhzhyon Add for reason*/
-#ifdef PANEL_SRE
-static char sre_off[2] =
-{
-    0x55, 0x00
-};
-static char sre_manual_mode[2] =
-{
-    0x55, 0x40
-};
-static char sre_weak_mode[2] =
-{
-    0x55, 0x50
-};
-static char sre_middle_mode[2] =
-{
-    0x55, 0x60
-};
-static char sre_strong_mode[2] =
-{
-    0x55, 0x70
-};
-
-
-static struct dsi_cmd_desc sre_off_sequence[] =
-{
-    {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-        sizeof(sre_off), sre_off
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(display_on), display_on
-    },
-};
-
-
-static struct dsi_cmd_desc sre_manual_mode_sequence[] =
-{
-    {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-        sizeof(sre_manual_mode), sre_manual_mode
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(display_on), display_on
-    },
-};
-
-static struct dsi_cmd_desc sre_weak_mode_sequence[] =
-{
-    {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-        sizeof(sre_weak_mode), sre_weak_mode
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(display_on), display_on
-    },
-};
-
-static struct dsi_cmd_desc sre_middle_mode_sequence[] =
-{
-    {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-        sizeof(sre_middle_mode), sre_middle_mode
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(display_on), display_on
-    },
-};
-
-static struct dsi_cmd_desc sre_strong_mode_sequence[] =
-{
-    {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-        sizeof(sre_strong_mode), sre_strong_mode
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(display_on), display_on
-    },
-};
-static int set_sre_resume_mode(int level)
-{
-    int ret = 0;
-    switch(level)
-    {
-        case 0:
-            mipi_dsi_cmds_tx(&orise_tx_buf, sre_off_sequence,
-                             ARRAY_SIZE(sre_off_sequence));
-            break;
-        case 1:
-            mipi_dsi_cmds_tx(&orise_tx_buf, sre_weak_mode_sequence,
-                             ARRAY_SIZE(sre_weak_mode_sequence));
-            break;
-        case 2:
-            mipi_dsi_cmds_tx(&orise_tx_buf, sre_middle_mode_sequence,
-                             ARRAY_SIZE(sre_middle_mode_sequence));
-            sre_mode = SRE_MIDDLE_MODE;
-            break;
-        case 3:
-            mipi_dsi_cmds_tx(&orise_tx_buf, sre_strong_mode_sequence,
-                             ARRAY_SIZE(sre_strong_mode_sequence));
-            break;
-        case 4:
-            mipi_dsi_cmds_tx(&orise_tx_buf, sre_manual_mode_sequence,
-                             ARRAY_SIZE(sre_manual_mode_sequence));
-
-        default:
-            pr_err("%s Level %d is not supported!\n",__func__,level);
-            ret = -1;
-            break;
-    }
-    printk(KERN_INFO "set sre mode %d finished\n",level);
-
-    return ret;
-}
-#endif
-/*OPPO 2013-10-11 zhzhyon Add end*/
 
 
 static struct delayed_work techeck_work;
@@ -696,6 +713,7 @@ static int mipi_orise_lcd_on(struct platform_device *pdev)
             if(sre_level != sre_mode)
             {
                 set_sre_resume_mode(sre_level);
+                sre_mode = sre_level;
             }
 #endif
             /*OPPO 2013-10-11 zhzhyon Add end*/
@@ -719,7 +737,7 @@ static int mipi_orise_lcd_on(struct platform_device *pdev)
     }
     else
     {
-        pr_debug("Neal-------%s: lcd initial!\n",__func__);
+        pr_info("Neal-------%s: lcd initial!\n",__func__);
         mipi_dsi_cmds_tx(&orise_tx_buf, cmd_mipi_initial_sequence,
                          ARRAY_SIZE(cmd_mipi_initial_sequence));
         /* OPPO 2013-10-10 gousj Add begin for cabc init on system up */
@@ -865,13 +883,30 @@ static int set_cabc(int level)
 
     mipi_dsi_clk_cfg(1);
     mipi_set_tx_power_mode(0);
+    /*OPPO 2013-10-18 zhzhyon Add for reason*/
+#ifdef PANEL_SRE
+    if(level && (sre_level != sre_mode) && sre_level)
+    {
+        mipi_dsi_cmds_tx(&orise_tx_buf, sre_strong_mode_sequence,
+                         ARRAY_SIZE(sre_strong_mode_sequence));
+        sre_mode = SRE_HIGH_MODE;
+    }
+#endif
+    /*OPPO 2013-10-18 zhzhyon Add end*/
 
     switch(level)
     {
-        case 0:
+        case 0:/*
             mipi_dsi_cmds_tx(&orise_tx_buf, cabc_off_sequence,
                              ARRAY_SIZE(cabc_off_sequence));
+                             */
+            set_backlight_pwm(0);
             cabc_mode = CABC_CLOSE;
+            /*OPPO 2013-10-18 zhzhyon Add for reason*/
+#ifdef PANEL_SRE
+            sre_mode = SRE_CLOSE;
+#endif
+            /*OPPO 2013-10-18 zhzhyon Add end*/
             break;
         case 1:
             mipi_dsi_cmds_tx(&orise_tx_buf, cabc_user_interface_image_sequence,
@@ -893,7 +928,7 @@ static int set_cabc(int level)
             ret = -1;
             break;
     }
-    mipi_set_tx_power_mode(1);
+    //mipi_set_tx_power_mode(1);
     mipi_dsi_clk_cfg(0);
     mutex_unlock(&cabc_mutex);
     return ret;
@@ -921,7 +956,7 @@ static ssize_t attr_orise_cabc(struct device *dev,
 }
 #endif
 /*OPPO Neal add  end 2013-8-13*/
-
+extern int lm3630_pwm_readout(void);
 #ifdef PANEL_TEST
 static int get_sign(int sign)
 {
@@ -930,6 +965,9 @@ static int get_sign(int sign)
         case 1:
             pr_info("Neal: Current backlight value = %d. Read out backlight register value = %d\n ",
                     globle_bkl,lm3630_bkl_readout());
+        case 2:
+            pr_info("Neal: Current pwm = %d. \n ", lm3630_pwm_readout());
+
             break;
 
         default:
@@ -963,6 +1001,17 @@ static int set_sre(int level)
     int ret = 0;
     pr_info("%s sre level = %d\n",__func__,level);
     mutex_lock(&sre_mutex);
+    /*OPPO 2013-10-18 zhzhyon Add for reason*/
+#ifdef PANEL_CABC
+    if((cabc_mode == CABC_CLOSE) && level)
+    {
+        printk(KERN_INFO "cabc is off,don't allow to set sre\n");
+        sre_level = level;
+        mutex_unlock(&sre_mutex);
+        return 0;
+    }
+#endif
+    /*OPPO 2013-10-18 zhzhyon Add end*/
     /*OPPO 2013-10-11 zhzhyon Add for reason*/
     if(flag_lcd_off == true)
     {
@@ -977,29 +1026,38 @@ static int set_sre(int level)
     switch(level)
     {
         case 0:
+            sre_off[1] = sre_off[1] | cabc_mode;
             mipi_dsi_cmds_tx(&orise_tx_buf, sre_off_sequence,
                              ARRAY_SIZE(sre_off_sequence));
+            sre_off[1] = 0x00;
             sre_mode = SRE_CLOSE;
             break;
         case 1:
+            sre_weak_mode[1] = sre_weak_mode[1] | cabc_mode;
             mipi_dsi_cmds_tx(&orise_tx_buf, sre_weak_mode_sequence,
                              ARRAY_SIZE(sre_weak_mode_sequence));
+            sre_weak_mode[1] = 0x50;
             sre_mode = SRE_LOW_MODE;
             break;
         case 2:
+            sre_middle_mode[1] = sre_middle_mode[1] | cabc_mode;
             mipi_dsi_cmds_tx(&orise_tx_buf, sre_middle_mode_sequence,
                              ARRAY_SIZE(sre_middle_mode_sequence));
+            sre_middle_mode[1] = 0x60;
             sre_mode = SRE_MIDDLE_MODE;
             break;
         case 3:
+            sre_strong_mode[1] = sre_strong_mode[1] | cabc_mode;
             mipi_dsi_cmds_tx(&orise_tx_buf, sre_strong_mode_sequence,
                              ARRAY_SIZE(sre_strong_mode_sequence));
+            sre_strong_mode[1] = 0x70;
             sre_mode = SRE_HIGH_MODE;
             break;
         case 4:
+            sre_manual_mode[1] = sre_manual_mode[1] | cabc_mode;
             mipi_dsi_cmds_tx(&orise_tx_buf, sre_manual_mode_sequence,
                              ARRAY_SIZE(sre_manual_mode_sequence));
-
+            sre_manual_mode[1] = 0x40;
 
         default:
             pr_err("%s Level %d is not supported!\n",__func__,level);

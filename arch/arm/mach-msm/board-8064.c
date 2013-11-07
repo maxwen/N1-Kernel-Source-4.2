@@ -287,7 +287,7 @@ int __init board_pcb_verson_init(char *s)
 	else if (!strcmp(s, "td_pvt3"))
 		current_pcb_version_num = PCB_VERSION_PVT3_TD;
 	/*OPPO 2013-08-23 zhangpan add pcb version for N1*/
-	else if (!strcmp(s, "n1t_evt"))
+	else if (!strcmp(s, "n1t_evt_td"))
 		current_pcb_version_num = PCB_VERSION_EVT_N1;
 	else if (!strcmp(s, "n1f_evt"))
 		current_pcb_version_num = PCB_VERSION_EVT_N1F;
@@ -297,11 +297,11 @@ int __init board_pcb_verson_init(char *s)
 		current_pcb_version_num = PCB_VERSION_DVT_N1F;
 	else if (!strcmp(s, "n1f_pvt"))
 		current_pcb_version_num = PCB_VERSION_PVT_N1F;
-	else if (!strcmp(s, "n1t_evt3"))
+	else if (!strcmp(s, "n1t_evt3_td"))
 		current_pcb_version_num = PCB_VERSION_EVT3_N1T;
-	else if (!strcmp(s, "n1t_dvt"))
+	else if (!strcmp(s, "n1t_dvt_td"))
 		current_pcb_version_num = PCB_VERSION_DVT_N1T;
-	else if (!strcmp(s, "n1t_pvt"))
+	else if (!strcmp(s, "n1t_pvt_td"))
 		current_pcb_version_num = PCB_VERSION_PVT_N1T;
 	/*OPPO 2013-08-23 zhangpan add end*/
 

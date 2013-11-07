@@ -76,6 +76,7 @@ static struct vsycn_ctrl {
 	ktime_t vsync_time;
 	u32 last_vsync_ms;
 	struct work_struct clk_work;
+	wait_queue_head_t wait_queue;
 } vsync_ctrl_db[MAX_CONTROLLER];
 
 static void vsync_irq_enable(int intr, int term)
@@ -416,12 +417,20 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 
 	mdp4_stat.overlay_commit[pipe->mixer_num]++;
 
+
+/* OPPO 2013-10-19 gousj Modify begin for use wait for  vsync insted of dmap */
+#ifndef CONFIG_VENDOR_EDIT
 	if (wait) {
 		if (pipe->ov_blt_addr)
 			mdp4_dsi_cmd_wait4ov(0);
 		else
 			mdp4_dsi_cmd_wait4dmap(0);
 	}
+#else
+	if (wait)		
+		mdp4_dsi_cmd_wait4vsync(0);
+#endif
+/* OPPO 2013-10-19 gousj Modify end */
 
 	return cnt;
 }
@@ -474,12 +483,13 @@ void mdp4_dsi_cmd_vsync_ctrl(struct fb_info *info, int enable)
 	mutex_unlock(&vctrl->update_lock);
 }
 
+/* OPPO 2013-10-19 gousj Modify begin for rewirte wait for vsync  */
+#ifdef CONFIG_VENDOR_EDIT
 void mdp4_dsi_cmd_wait4vsync(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
-	unsigned long flags;
-
+	
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
 		return;
@@ -491,15 +501,13 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	spin_lock_irqsave(&vctrl->spin_lock, flags);
-	if (vctrl->wait_vsync_cnt == 0)
-		INIT_COMPLETION(vctrl->vsync_comp);
-	vctrl->wait_vsync_cnt++;
-	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+	wait_event_interruptible_timeout(vctrl->wait_queue, 1,
+			msecs_to_jiffies(VSYNC_PERIOD * 8));
 
-	wait_for_completion(&vctrl->vsync_comp);
 	mdp4_stat.wait4vsync0++;
 }
+#endif
+/* OPPO 2013-10-19 gousj Modify end */
 
 static void mdp4_dsi_cmd_wait4dmap(int cndx)
 {
@@ -540,6 +548,8 @@ static void mdp4_dsi_cmd_wait4ov(int cndx)
  * called from interrupt context
  */
 
+/* OPPO 2013-10-19 gousj Modify begin for rewirte */
+#ifndef CONFIG_VENDOR_EDIT
 static void primary_rdptr_isr(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
@@ -579,6 +589,46 @@ static void primary_rdptr_isr(int cndx)
 	}
 	spin_unlock(&vctrl->spin_lock);
 }
+#else
+static void primary_rdptr_isr(int cndx)
+{
+	struct vsycn_ctrl *vctrl;
+	u32 cur_vsync_ms;
+	int vsync_diff;
+	vctrl = &vsync_ctrl_db[cndx];
+	pr_debug("%s: ISR, tick=%d pan=%d cpu=%d\n", __func__,
+		vctrl->expire_tick, vctrl->pan_display, smp_processor_id());
+	vctrl->rdptr_intr_tot++;
+
+	spin_lock(&vctrl->spin_lock);
+	vctrl->vsync_time = ktime_get();
+	cur_vsync_ms =  ktime_to_ms(vctrl->vsync_time);
+	vsync_diff = (int)(cur_vsync_ms - vctrl->last_vsync_ms);
+
+	if ((vsync_diff >= 0) && (vsync_diff < VSYNC_MIN_DIFF_MS)) {
+		spin_unlock(&vctrl->spin_lock);
+		return;
+	}
+
+	vctrl->last_vsync_ms = cur_vsync_ms;
+	wake_up_interruptible_all(&vctrl->wait_queue);
+
+	if (vctrl->expire_tick) {
+		vctrl->expire_tick--;
+		if (vctrl->expire_tick == 0) {
+			if (vctrl->pan_display <= 0) {
+				vctrl->clk_control = 1;
+				schedule_work(&vctrl->clk_work);
+			} else {
+				/* wait one more vsycn */
+				vctrl->expire_tick += 1;
+			}
+		}
+	}
+	spin_unlock(&vctrl->spin_lock);
+}
+#endif
+/* OPPO 2013-10-19 gousj Modify end */
 
 void mdp4_dmap_done_dsi_cmd(int cndx)
 {
@@ -692,6 +742,8 @@ static void clk_ctrl_work(struct work_struct *work)
 	}
 	mutex_unlock(&vctrl->update_lock);
 }
+/* OPPO 2013-10-19 gousj Modify begin for rewirte */
+#ifndef CONFIG_VENDOR_EDIT
 
 ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -729,7 +781,36 @@ ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 	buf[strlen(buf) + 1] = '\0';
 	return ret;
 }
+#else
+ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int cndx;
+	struct vsycn_ctrl *vctrl;
+	ssize_t ret = 0;
+	u64 vsync_tick;
+	ktime_t timestamp;
 
+	cndx = 0;
+	vctrl = &vsync_ctrl_db[0];
+	timestamp = vctrl->vsync_time;
+
+	ret = wait_event_interruptible(vctrl->wait_queue,
+			!ktime_equal(timestamp, vctrl->vsync_time) &&
+			vctrl->vsync_enabled);
+	if (ret == -ERESTARTSYS)
+		return ret;
+
+	vsync_tick = ktime_to_ns(vctrl->vsync_time);
+	ret = scnprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
+	buf[strlen(buf) + 1] = '\0';
+	return ret;
+}
+#endif
+/* OPPO 2013-10-19 gousj Modify end */
+
+/* OPPO 2013-10-19 gousj Modify begin for rewirte */
+#ifndef CONFIG_VENDOR_EDIT
 void mdp4_dsi_rdptr_init(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
@@ -753,6 +834,34 @@ void mdp4_dsi_rdptr_init(int cndx)
 	atomic_set(&vctrl->suspend, 1);
 	INIT_WORK(&vctrl->clk_work, clk_ctrl_work);
 }
+#else
+	
+void mdp4_dsi_rdptr_init(int cndx)
+{
+	struct vsycn_ctrl *vctrl;
+
+	if (cndx >= MAX_CONTROLLER) {
+		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
+		return;
+	}
+
+	vctrl = &vsync_ctrl_db[cndx];
+	if (vctrl->inited)
+		return;
+
+	vctrl->inited = 1;
+	vctrl->update_ndx = 0;
+	mutex_init(&vctrl->update_lock);
+	init_completion(&vctrl->ov_comp);
+	init_completion(&vctrl->dmap_comp);
+	spin_lock_init(&vctrl->spin_lock);
+	init_waitqueue_head(&vctrl->wait_queue);
+	atomic_set(&vctrl->suspend, 1);
+	INIT_WORK(&vctrl->clk_work, clk_ctrl_work);
+}
+	
+#endif
+/* OPPO 2013-10-19 gousj Modify end */
 
 void mdp4_primary_rdptr(void)
 {
@@ -773,6 +882,8 @@ static __u32 msm_fb_line_length(__u32 fb_index, __u32 xres, int bpp)
 	else
 		return xres * bpp;
 }
+/* OPPO 2013-10-19 gousj Modify begin for rewirte */
+#ifndef CONFIG_VENDOR_EDIT
 
 void mdp4_mipi_vsync_enable(struct msm_fb_data_type *mfd,
 		struct mdp4_overlay_pipe *pipe, int which)
@@ -805,6 +916,65 @@ void mdp4_mipi_vsync_enable(struct msm_fb_data_type *mfd,
 	}
 	mdp_clk_ctrl(0);
 }
+#else
+void mdp4_mipi_vsync_enable(struct msm_fb_data_type *mfd,
+		struct mdp4_overlay_pipe *pipe, int which)
+{
+	uint32 data, tear_en;
+
+	tear_en = (1 << which);
+
+	mdp_clk_ctrl(1);
+
+	data = inpdw(MDP_BASE + 0x20c);
+	if ((mfd->use_mdp_vsync) && (mfd->ibuf.vsync_enable) &&
+	    (mfd->panel_info.lcd.vsync_enable)) {
+		data |= tear_en;
+		/*
+		 * rdptr init and irq cannot be same due to h/w bug.
+		 * if they are same, rdptr irqs could be missed.
+		 */
+		if (mfd->panel_info.lcd.primary_vsync_init ||
+			mfd->panel_info.lcd.primary_rdptr_irq) {
+			MDP_OUTP(MDP_BASE + 0x128,
+				mfd->panel_info.lcd.primary_vsync_init);
+			MDP_OUTP(MDP_BASE + 0x21C,
+				mfd->panel_info.lcd.primary_rdptr_irq);
+		} else {
+			MDP_OUTP(MDP_BASE + 0x128, 0);
+			MDP_OUTP(MDP_BASE + 0x21C, 1);
+		}
+
+		/*
+		 * adjust start position and threshold to make sure
+		 * write ptr follows read pts (TE is effective), and
+		 * at the same write is not throttled(shorter dmap
+		 * time)
+		 */
+		if (mfd->panel_info.lcd.primary_start_pos)
+			MDP_OUTP(MDP_BASE + 0x210,
+				mfd->panel_info.lcd.primary_start_pos);
+		else
+			MDP_OUTP(MDP_BASE + 0x210,
+				 mfd->panel_info.lcd.v_back_porch +
+				 mfd->panel_info.lcd.v_front_porch +
+				 vsync_start_y_adjust);
+
+		if (mfd->panel_info.lcd.vsync_threshold_continue &&
+				mfd->panel_info.lcd.vsync_threshold_start)
+			MDP_OUTP(MDP_BASE + 0x200,
+			 ((mfd->panel_info.lcd.vsync_threshold_continue << 16) |
+				mfd->panel_info.lcd.vsync_threshold_start));
+		else
+			MDP_OUTP(MDP_BASE + 0x200,
+			 ((4 << 16) | mfd->panel_info.lcd.v_pulse_width));
+	} else
+		data &= ~tear_en;
+	MDP_OUTP(MDP_BASE + 0x20c, data);
+	mdp_clk_ctrl(0);
+}
+#endif
+/* OPPO 2013-10-19 gousj Modify end */
 
 void mdp4_dsi_cmd_base_swap(int cndx, struct mdp4_overlay_pipe *pipe)
 {
@@ -857,7 +1027,8 @@ static void mdp4_overlay_setup_pipe_addr(struct msm_fb_data_type *mfd,
 	pipe->dst_x = 0;
 	pipe->srcp0_addr = (uint32)src;
 }
-
+/* OPPO 2013-10-19 gousj Add begin for wfd crash */
+#ifdef CONFIG_VENDOR_EDIT
 static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 {
 	int ptype;
@@ -901,7 +1072,8 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	/* TE enabled */
 	mdp4_mipi_vsync_enable(mfd, pipe, 0);
 
-	MDP_OUTP(MDP_BASE + 0x021c, 10); /* read pointer */
+	mdp4_overlay_mdp_pipe_req(pipe, mfd);
+	mdp4_calc_blt_mdp_bw(mfd, pipe);
 
 	/*
 	 * configure dsi stream id
@@ -910,6 +1082,8 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	MDP_OUTP(MDP_BASE + 0x000a0, 0x10);
 	/* disable dsi trigger */
 	MDP_OUTP(MDP_BASE + 0x000a4, 0x00);
+
+	
 
 	mdp4_overlay_setup_pipe_addr(mfd, pipe);
 
@@ -927,6 +1101,8 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 
 	wmb();
 }
+#endif
+/* OPPO 2013-10-19 gousj Add end */
 
 /* 3D side by side */
 void mdp4_dsi_cmd_3d_sbys(struct msm_fb_data_type *mfd,
@@ -1057,7 +1233,8 @@ int mdp4_dsi_cmd_on(struct platform_device *pdev)
 
 	return ret;
 }
-
+/* OPPO 2013-10-19 gousj Add begin for wfd crash*/
+#ifdef CONFIG_VENDOR_EDIT
 int mdp4_dsi_cmd_off(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -1069,6 +1246,7 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 	int undx;
 	int need_wait, cnt;
 	unsigned long flags;
+	int mixer = 0;
 
 	pr_debug("%s+: pid=%d\n", __func__, current->pid);
 
@@ -1086,8 +1264,7 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 
 	need_wait = 0;
 	mutex_lock(&vctrl->update_lock);
-
-	complete_all(&vctrl->vsync_comp);
+	wake_up_interruptible_all(&vctrl->wait_queue);
 
 	pr_debug("%s: clk=%d pan=%d\n", __func__,
 			vctrl->clk_enabled, vctrl->pan_display);
@@ -1134,7 +1311,8 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 
 	if (pipe) {
 		/* sanity check, free pipes besides base layer */
-		mdp4_overlay_unset_mixer(pipe->mixer_num);
+		mixer = pipe->mixer_num;
+		mdp4_overlay_unset_mixer(mixer);
 		if (mfd->ref_cnt == 0) {
 			/* adb stop */
 			if (pipe->pipe_type == OVERLAY_TYPE_BF)
@@ -1154,11 +1332,21 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 
 	atomic_set(&vctrl->suspend, 1);
 
+	/*
+	 * clean up ion freelist
+	 * there need two stage to empty ion free list
+	 * therefore need call unmap freelist twice
+	 */
+	mdp4_overlay_iommu_unmap_freelist(mixer);
+	mdp4_overlay_iommu_unmap_freelist(mixer);
+
 	mutex_unlock(&mfd->dma->ov_mutex);
 
 	pr_debug("%s-:\n", __func__);
 	return ret;
 }
+#endif
+/* OPPO 2013-10-19 gousj Add end */
 
 static int mdp4_dsi_cmd_clk_check(struct vsycn_ctrl *vctrl)
 {
@@ -1218,7 +1406,13 @@ void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd)
 	}
 
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
+/* OPPO 2013-10-19 gousj Modify begin for WFD crash */
+#ifndef CONFIG_VENDOR_EDIT
 	mdp4_dsi_cmd_pipe_commit(cndx, 1);
+#else
+	mdp4_dsi_cmd_pipe_commit(cndx, 0);
+#endif
+/* OPPO 2013-10-19 gousj Modify end */
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 	mutex_unlock(&mfd->dma->ov_mutex);
 

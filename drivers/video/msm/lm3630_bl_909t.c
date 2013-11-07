@@ -160,6 +160,21 @@ static int lm3630_i2c_write(unsigned char   raddr, unsigned char  rdata)
     return rc;
 }
 
+int set_backlight_pwm(int state)
+{
+    int rc = 0;
+    if(state)
+    {
+        rc = lm3630_i2c_write(0x01, 0x19);
+    }
+    else
+    {
+        rc = lm3630_i2c_write(0x01, 0x18);
+    }
+    return rc;
+}
+
+
 int lm3630_bkl_control(unsigned char bkl_level)
 {
     int rc = 0;
@@ -185,8 +200,8 @@ int lm3630_bkl_control(unsigned char bkl_level)
         rc = lm3630_i2c_write(0x00, 0x1f);
 		sleep_mode= false;
         mdelay(10);
-        rc = lm3630_i2c_write(0x01, 0x18);
         rc = lm3630_i2c_write(0x02, 0x79);
+		rc = lm3630_i2c_write(0x01, 0x19);
         rc = lm3630_i2c_write(0x05, 0x14);
         rc = lm3630_i2c_write(0x06, 0x14);
         rc = lm3630_i2c_write(0x07, 0x00);
@@ -250,7 +265,7 @@ static int lm3630_i2c_probe(struct i2c_client *client, const struct i2c_device_i
     }
     //initialize bkl to max when system boot
     rc = lm3630_i2c_write(0x00, 0x1f);
-    rc = lm3630_i2c_write(0x01, 0x18);
+	rc = lm3630_i2c_write(0x01, 0x19);
     rc = lm3630_i2c_write(0x02, 0x79);
     rc = lm3630_i2c_write(0x03, 0xff);
     rc = lm3630_i2c_write(0x05, 0x14);

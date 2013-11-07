@@ -362,8 +362,18 @@ EXPORT_SYMBOL(unregister_reboot_notifier);
  *	Shutdown everything and perform a clean reboot.
  *	This is not safe to call in interrupt context.
  */
+/*OPPO 2013-10-23 zhzhyon Add for start and shutdown pop*/
+#ifdef CONFIG_VENDOR_EDIT
+ extern void headset_micbias_disable(bool);
+#endif
+/*OPPO 2013-10-23 zhzhyon Add end*/
 void kernel_restart(char *cmd)
 {
+	/*OPPO 2013-10-23 zhzhyon Add for start and shutdown pop*/
+	#ifdef CONFIG_VENDOR_EDIT
+	headset_micbias_disable(0);
+	#endif
+	/*OPPO 2013-10-23 zhzhyon Add end*/
 	kernel_restart_prepare(cmd);
 	if (!cmd)
 		printk(KERN_EMERG "Restarting system.\n");
@@ -405,6 +415,11 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
+	/*OPPO 2013-10-23 zhzhyon Add for start and shutdown pop*/
+	#ifdef CONFIG_VENDOR_EDIT
+	headset_micbias_disable(1);
+	#endif
+	/*OPPO 2013-10-23 zhzhyon Add end*/
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
 		pm_power_off_prepare();

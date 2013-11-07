@@ -234,6 +234,106 @@ static void print_active_locks(int type)
 	}
 }
 
+#ifdef CONFIG_VENDOR_EDIT
+/* OPPO 2013-10-28 zhenwx Add begin for print wake loke info */
+static int printk_active_wakelock(void)
+{
+	struct wake_lock *lock;
+	unsigned long irqflags;
+	long timeout;
+
+	spin_lock_irqsave(&list_lock, irqflags);
+	printk("active wakelock:");
+	list_for_each_entry(lock, &active_wake_locks[WAKE_LOCK_SUSPEND], link) {
+		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
+			timeout = lock->expires - jiffies;
+			if (timeout > 0)		 // non-expired wakelock
+				printk("  %s, time left%u ms", lock->name, jiffies_to_msecs(timeout));
+		} else {
+				printk("  %s", lock->name);
+		}
+	}
+	printk("\n");
+	spin_unlock_irqrestore(&list_lock, irqflags);
+	return 0;
+}
+
+static void wakelock_printk(struct work_struct *work);
+static struct workqueue_struct *wakelock_printk_work_queue = NULL;
+static DECLARE_DELAYED_WORK(wakelock_printk_work, wakelock_printk);
+static void wakelock_printk(struct work_struct *work)
+{
+	printk_active_wakelock();
+	queue_delayed_work(wakelock_printk_work_queue, &wakelock_printk_work, msecs_to_jiffies(60*1000));
+}
+
+void wakelock_printk_control(int on) 
+{
+	if (wakelock_printk_work_queue == NULL) {
+		printk(KERN_INFO"%s: wakelock_printk_work_queue is NULL, do nothing\n", __func__);
+		return;
+	}
+	if (on) {
+		queue_delayed_work(wakelock_printk_work_queue, &wakelock_printk_work, msecs_to_jiffies(60*1000));
+	} else {
+		cancel_delayed_work(&wakelock_printk_work);
+	}
+}
+
+int sysfs_get_active_wakelock(char *buf)
+{
+	struct wake_lock *lock;
+	unsigned long irqflags;
+	int len =0;
+	long timeout;
+
+	spin_lock_irqsave(&list_lock, irqflags);
+
+	list_for_each_entry(lock, &active_wake_locks[WAKE_LOCK_SUSPEND], link) {
+		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
+			timeout = lock->expires - jiffies;
+			if (timeout > 0)		 // non-expired wakelock
+				len += sprintf(buf + len, "%s,  time left%u ms\n", lock->name, jiffies_to_msecs(timeout));
+		} else {
+                     len += sprintf(buf + len, "%s\n", lock->name);
+		}
+	}
+	
+	spin_unlock_irqrestore(&list_lock, irqflags);
+
+	return len;
+}
+
+int sysfs_get_inactive_wakelock(char *buf)
+{
+	struct wake_lock *lock;
+	unsigned long irqflags;
+	int len =0;
+	long timeout;
+
+	spin_lock_irqsave(&list_lock, irqflags);
+
+	list_for_each_entry(lock, &active_wake_locks[WAKE_LOCK_SUSPEND], link) {
+		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
+			timeout = lock->expires - jiffies;
+			if (timeout <= 0)		// expired wake lock
+				len += sprintf(buf + len, "%s(expired)\n", lock->name);
+		} 
+	}
+
+	list_for_each_entry(lock, &inactive_locks, link) {
+		len += sprintf(buf + len, "%s\n ", lock->name);
+	}
+	
+	spin_unlock_irqrestore(&list_lock, irqflags);
+
+	return len;
+}
+
+/* OPPO 2013-10-28 zhenwx Add  end */
+#endif //CONFIG_VENDOR_EDIT
+
+
 static long has_wake_lock_locked(int type)
 {
 	struct wake_lock *lock, *n;
@@ -347,6 +447,11 @@ static void suspend(struct work_struct *work)
 			pr_info("suspend: abort suspend\n");
 		return;
 	}
+#ifdef CONFIG_VENDOR_EDIT
+/* OPPO 2013-10-28 zhenwx Add begin for print wake loke info */
+	wakelock_printk_control(0); 	
+/* OPPO 2013-10-28 zhenwx Add  end */
+#endif //CONFIG_VENDOR_EDIT
 
 	entry_event_num = current_event_num;
 	suspend_sys_sync_queue();
@@ -381,6 +486,11 @@ static void suspend(struct work_struct *work)
 			pr_info("suspend: pm_suspend returned with no event\n");
 		wake_lock_timeout(&unknown_wakeup, HZ / 2);
 	}
+#ifdef CONFIG_VENDOR_EDIT
+/* OPPO 2013-10-28 zhenwx Add begin for print wake loke info */
+wakelock_printk_control(1); 
+/* OPPO 2013-10-28 zhenwx Add  end */
+#endif //CONFIG_VENDOR_EDIT	
 }
 static DECLARE_WORK(suspend_work, suspend);
 
@@ -673,6 +783,11 @@ static int __init wakelocks_init(void)
 #ifdef CONFIG_WAKELOCK_STAT
 	proc_create("wakelocks", S_IRUGO, NULL, &wakelock_stats_fops);
 #endif
+#ifdef CONFIG_VENDOR_EDIT
+/* OPPO 2013-10-28 zhenwx Add begin for print wake loke info */
+	wakelock_printk_work_queue = create_singlethread_workqueue("wakelock_printk");	
+/* OPPO 2013-10-28 zhenwx Add  end */
+#endif //CONFIG_VENDOR_EDIT 
 
 	return 0;
 

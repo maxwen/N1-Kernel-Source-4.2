@@ -37,6 +37,7 @@ spinlock_t te_count_lock;
 unsigned long flags;
 #define MIPI_CMD_INIT
 //#define MIPI_READ
+#define PANEL_CABC
 
 extern struct platform_device *g_mdp_dev;
 static struct mipi_dsi_panel_platform_data *mipi_orise_pdata;
@@ -56,6 +57,19 @@ static struct wake_lock te_wake_lock;
 /* OPPO 2013-03-07 zhengzk Add begin for reason */
 static struct switch_dev display_switch;
 /* OPPO 2013-03-07 zhengzk Add end */
+
+#ifdef PANEL_CABC
+enum
+{
+    CABC_CLOSE = 0,
+    CABC_LOW_MODE,
+    CABC_MIDDLE_MODE,
+    CABC_HIGH_MODE,
+
+};
+static int cabc_mode = CABC_CLOSE;
+#endif
+
 
 extern int mipi_dsi_off(struct platform_device *pdev);
 extern int mipi_dsi_on(struct platform_device *pdev);
@@ -87,11 +101,6 @@ static char protect_off[2] =
     0x04,
 };
 
-static char hitachi_nop[2] =
-{
-    0x00,   //NOP ( Hsync out option)
-    0x00,
-};
 
 static char hsync_output[4] =
 {
@@ -108,13 +117,13 @@ static char protect_on[2] =
 static char cabc_control[2] =
 {
     0x55,   //CABC control
-    0x02,
+    0x03,
 };
 
 static char bkl_control[2] =
 {
     0x53,   //Back light control
-    0x00,
+    0x2c,
 };
 
 static char te_out[2] =
@@ -138,7 +147,7 @@ static char sleep_out[2] =
 static char brightness_setting[3] =
 {
     0x51,   //brightness_setting
-    0x0f, 0xff,
+    0xff,
 };
 
 static char display_off[2] =
@@ -153,125 +162,92 @@ static char sleep_in[2] =
     0x00,
 };
 
-/*
-static char nvm[2] = {
-    0xb1,   //Deep standby off (option)
-    0x01,
-};
-*/
-/*
-static char disable_nvm[] = {
+static char disable_nvm[2] =
+{
     0xd6,   //Deep standby off (option)
     0x01,
 };
-*/
-/*
-static char vcom_set[] = {
-    0xd5,
-    0x06,
-    0x00,
+
+static char pwm_freqency[8] =
+{
+    0xce,   //Deep standby off (option)
     0x00,
     0x01,
-    0x36,
-    0x01,
-    0x36,
+    0x88,
+    0xc1,
+    0x00,
+    0x1e,
+    0x04
 };
 
-*/
-/*
-static char deep_stand_by[8] = {
-    0xb1,   //Deep standby off (option)
-    0x01,
-};
-*/
+#ifdef PANEL_CABC
+static char cabc_off[2] = { 0x55, 0x00};
+static char cabc_user_interface_image[2] = { 0x55, 0x01};
+static char cabc_still_image[2] = { 0x55, 0x02};
+static char cabc_video_image[2] = { 0x55, 0x03};
 
-static char gamma_R[25] =
+static char cabc_movie_bl_ctr[] = { 0x07,0xba,0x00,0x78,0x64,0x10,0x64,0xff};
+
+static char cabc_min_brightness[2] = { 0x5e, 0x00};
+
+static struct dsi_cmd_desc cabc_off_sequence[] =
 {
-    0xc7,
-    0x00,
-    0x0A,
-    0x11,
-    0x1A,
-    0x27,
-    0x41,
-    0x37,
-    0x4E,
-    0x5E,
-    0x6A,
-    0x70,
-    0x7F,
-    0x00,
-    0x0A,
-    0x11,
-    0x1A,
-    0x27,
-    0x41,
-    0x37,
-    0x4E,
-    0x5E,
-    0x6A,
-    0x70,
-    0x7F
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(cabc_off), cabc_off
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
 };
 
-static char gamma_G[25] =
+static struct dsi_cmd_desc cabc_user_interface_image_sequence[] =
 {
-    0xc8,
-    0x00,
-    0x0B,
-    0x12,
-    0x1B,
-    0x29,
-    0x42,
-    0x36,
-    0x4D,
-    0x5E,
-    0x6A,
-    0x71,
-    0x7F,
-    0x00,
-    0x0B,
-    0x12,
-    0x1B,
-    0x29,
-    0x42,
-    0x36,
-    0x4D,
-    0x5E,
-    0x6A,
-    0x71,
-    0x7F
-
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(cabc_user_interface_image), cabc_user_interface_image
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
 };
 
-static char gamma_B[25] =
+static struct dsi_cmd_desc cabc_still_image_sequence[] =
 {
-    0xc9,
-    0x00,
-    0x0B,
-    0x12,
-    0x1B,
-    0x28,
-    0x42,
-    0x37,
-    0x4D,
-    0x5E,
-    0x6B,
-    0x71,
-    0x7F,
-    0x00,
-    0x0B,
-    0x12,
-    0x1B,
-    0x28,
-    0x42,
-    0x37,
-    0x4D,
-    0x5E,
-    0x6B,
-    0x71,
-    0x7F
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(cabc_still_image), cabc_still_image
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
 };
+
+static struct dsi_cmd_desc cabc_video_image_sequence[] =
+{
+
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+        sizeof(cabc_min_brightness), cabc_min_brightness
+    },
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+        sizeof(cabc_movie_bl_ctr), cabc_movie_bl_ctr
+    },
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(cabc_video_image), cabc_video_image
+    },
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
+};
+#endif
+
 
 static struct dsi_cmd_desc jdi_mipi_initial_sequence[] =
 {
@@ -280,80 +256,78 @@ static struct dsi_cmd_desc jdi_mipi_initial_sequence[] =
         sizeof(protect_off), protect_off
     },
     {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
-    },
-    {
         DTYPE_GEN_LWRITE, 1, 0, 0, 10,
         sizeof(hsync_output), hsync_output
     },
+
     {
         DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-        sizeof(gamma_R), gamma_R
+        sizeof(pwm_freqency), pwm_freqency
     },
+
     {
         DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-        sizeof(gamma_G), gamma_G
+        sizeof(disable_nvm), disable_nvm
     },
+
     {
-        DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-        sizeof(gamma_B), gamma_B
-    },
-    {
-        DTYPE_GEN_LWRITE, 1, 0, 0, 10,
+        DTYPE_GEN_WRITE2, 1, 0, 0, 10,
         sizeof(protect_on), protect_on
     },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
-    },
+
     {
         DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-        sizeof(cabc_control), cabc_control
+        sizeof(brightness_setting), brightness_setting
     },
+
     {
         DTYPE_DCS_WRITE1, 1, 0, 0, 10,
         sizeof(bkl_control), bkl_control
     },
+
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(cabc_control), cabc_control
+    },
+
     {
         DTYPE_DCS_WRITE1, 1, 0, 0, 10,
         sizeof(te_out), te_out
     },
+
     {
         DTYPE_DCS_WRITE, 1, 0, 0, 10,
         sizeof(display_on), display_on
     },
+
     {
         DTYPE_DCS_WRITE, 1, 0, 0, 120,
         sizeof(sleep_out), sleep_out
     },
+
 };
 
 /* OPPO 2013-10-05 gousj Add begin for sharp panel flicker */
 #ifdef CONFIG_VENDOR_EDIT
-static struct dsi_cmd_desc cmd_mipi_display_off[] = {
+static struct dsi_cmd_desc cmd_mipi_display_off[] =
+{
 
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 150,
-			sizeof(display_off), display_off},
+    {
+        DTYPE_DCS_LWRITE, 1, 0, 0, 150,
+        sizeof(display_off), display_off
+    },
 };
 
 
-static struct dsi_cmd_desc cmd_mipi_sleep_in[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 150,
-			sizeof(sleep_in), sleep_in},
+static struct dsi_cmd_desc cmd_mipi_sleep_in[] =
+{
+    {
+        DTYPE_DCS_LWRITE, 1, 0, 0, 150,
+        sizeof(sleep_in), sleep_in
+    },
 };
 #endif //CONFIG_VENDOR_EDIT
-/* OPPO 2013-10-05 gousj Add end */
 
-/* OPPO Neal add for sharp panel */
 static struct dsi_cmd_desc sharp_mipi_initial_sequence[] =
 {
     {
@@ -361,52 +335,91 @@ static struct dsi_cmd_desc sharp_mipi_initial_sequence[] =
         sizeof(protect_off), protect_off
     },
     {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
-    },
-
-    //{DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-    //  sizeof(vcom_set), vcom_set},
-
-    {
         DTYPE_GEN_LWRITE, 1, 0, 0, 10,
         sizeof(hsync_output), hsync_output
     },
 
 
-
-//      {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-//          sizeof(nvm), nvm},
-    /*
-            {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-                sizeof(gamma_R), gamma_R},
-            {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-                sizeof(gamma_G), gamma_G},
-            {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-                sizeof(gamma_B), gamma_B},
-            {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-                sizeof(disable_nvm), disable_nvm},
-    */
     {
         DTYPE_GEN_LWRITE, 1, 0, 0, 10,
+        sizeof(pwm_freqency), pwm_freqency
+    },
+
+    {
+        DTYPE_GEN_LWRITE, 1, 0, 0, 10,
+        sizeof(disable_nvm), disable_nvm
+    },
+
+    {
+        DTYPE_GEN_WRITE2, 1, 0, 0, 10,
         sizeof(protect_on), protect_on
     },
+
+
     {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(brightness_setting), brightness_setting
     },
+
+
     {
-        DTYPE_DCS_WRITE, 1, 0, 0, 10,
-        sizeof(hitachi_nop), hitachi_nop
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(bkl_control), bkl_control
     },
 
     {
         DTYPE_DCS_WRITE1, 1, 0, 0, 10,
         sizeof(cabc_control), cabc_control
+    },
+
+
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(te_out), te_out
+    },
+
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 10,
+        sizeof(display_on), display_on
+    },
+
+    {
+        DTYPE_DCS_WRITE, 1, 0, 0, 120,
+        sizeof(sleep_out), sleep_out
+    },
+
+
+};
+
+static struct dsi_cmd_desc cmd_mipi_resume_sequence[] =
+{
+    {
+        DTYPE_GEN_LWRITE, 1, 0, 0, 10,
+        sizeof(protect_off), protect_off
+    },
+    {
+        DTYPE_GEN_LWRITE, 1, 0, 0, 10,
+        sizeof(hsync_output), hsync_output
+    },
+
+    {
+        DTYPE_GEN_LWRITE, 1, 0, 0, 10,
+        sizeof(pwm_freqency), pwm_freqency
+    },
+
+    {
+        DTYPE_GEN_LWRITE, 1, 0, 0, 10,
+        sizeof(disable_nvm), disable_nvm
+    },
+
+    {
+        DTYPE_GEN_WRITE2, 1, 0, 0, 10,
+        sizeof(protect_on), protect_on
+    },
+
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(brightness_setting), brightness_setting
     },
 
     {
@@ -416,6 +429,11 @@ static struct dsi_cmd_desc sharp_mipi_initial_sequence[] =
 
     {
         DTYPE_DCS_WRITE1, 1, 0, 0, 10,
+        sizeof(cabc_control), cabc_control
+    },
+
+    {
+        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
         sizeof(te_out), te_out
     },
 
@@ -423,40 +441,9 @@ static struct dsi_cmd_desc sharp_mipi_initial_sequence[] =
         DTYPE_DCS_WRITE, 1, 0, 0, 10,
         sizeof(display_on), display_on
     },
-    //{DTYPE_DCS_WRITE, 1, 0, 0, 78,
+
     {
         DTYPE_DCS_WRITE, 1, 0, 0, 120,
-        sizeof(sleep_out), sleep_out
-    },
-
-
-};
-/*OPPO Neal add end*/
-static struct dsi_cmd_desc cmd_mipi_resume_sequence[] =
-{
-    //{DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-    //  sizeof(cabc_control), cabc_control},
-    //{DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-    //  sizeof(bkl_control), bkl_control},
-    /*      {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-            sizeof(gamma_R), gamma_R},
-        {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-            sizeof(gamma_G), gamma_G},
-        {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-            sizeof(gamma_B), gamma_B},
-        {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-            sizeof(disable_nvm), disable_nvm},
-            */
-    {
-        DTYPE_DCS_WRITE1, 1, 0, 0, 10,
-        sizeof(te_out), te_out
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 0,
-        sizeof(display_on), display_on
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 78,
         sizeof(sleep_out), sleep_out
     },
 };
@@ -469,29 +456,6 @@ static struct dsi_cmd_desc cmd_brightness_setting[] =
     },
 };
 
-static struct dsi_cmd_desc cmd_sleep_and_off[] =
-{
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 150,
-        sizeof(display_off), display_off
-    },
-    {
-        DTYPE_DCS_WRITE, 1, 0, 0, 150,
-        sizeof(sleep_in), sleep_in
-    },
-};
-/*
-static struct dsi_cmd_desc cmd_mipi_off_sequence[] = {
-        {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-            sizeof(protect_off), protect_off},
-        {DTYPE_DCS_WRITE, 1, 0, 0, 10,
-            sizeof(hitachi_nop), hitachi_nop},
-        {DTYPE_DCS_WRITE, 1, 0, 0, 10,
-            sizeof(hitachi_nop), hitachi_nop},
-        {DTYPE_GEN_LWRITE, 1, 0, 0, 10,
-            sizeof(deep_stand_by), deep_stand_by},
-};
-*/
 #endif
 
 /* OPPO 2013-03-07 zhengzk Add begin for reason */
@@ -511,6 +475,41 @@ static int operate_display_switch(void)
     return ret;
 }
 /* OPPO 2013-03-07 zhengzk Add end */
+
+#ifdef PANEL_CABC
+static int set_cabc_resume_mode(int mode)
+{
+    int ret;
+
+    switch(mode)
+    {
+        case 0:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_off_sequence,
+                             ARRAY_SIZE(cabc_off_sequence));
+            break;
+        case 1:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_user_interface_image_sequence,
+                             ARRAY_SIZE(cabc_user_interface_image_sequence));
+            break;
+        case 2:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_still_image_sequence,
+                             ARRAY_SIZE(cabc_still_image_sequence));
+            break;
+        case 3:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_video_image_sequence,
+                             ARRAY_SIZE(cabc_video_image_sequence));
+            break;
+        default:
+            pr_err("%s  %d is not supported!\n",__func__,mode);
+            ret = -1;
+            break;
+    }
+    printk(KERN_INFO "set cabc mode %d finished\n",mode);
+    set_backlight_pwm(1);
+    return ret;
+}
+#endif
+
 
 #ifdef MIPI_READ
 static char addr_buf[2] = {0x53, 0x00};     //read register backlight ctrl
@@ -564,6 +563,9 @@ static int mipi_orise_lcd_on(struct platform_device *pdev)
         {
             mipi_dsi_cmds_tx(&orise_tx_buf, cmd_mipi_resume_sequence,
                              ARRAY_SIZE(cmd_mipi_resume_sequence));
+#ifdef PANEL_CABC
+            set_cabc_resume_mode(cabc_mode);
+#endif
         }
         else
         {
@@ -611,6 +613,11 @@ static int mipi_orise_lcd_on(struct platform_device *pdev)
                              ARRAY_SIZE(cmd_brightness_setting));
         }
         /*OPPO Neal midify end*/
+
+#ifdef PANEL_CABC
+        cabc_mode = CABC_HIGH_MODE;
+        //set_cabc_resume_mode(cabc_mode);
+#endif
         flag_lcd_resume = true;
     }
 #endif
@@ -632,20 +639,11 @@ static int mipi_orise_lcd_off(struct platform_device *pdev)
 
     flag_lcd_off = true;
 
-/* OPPO 2013-10-10 gousj Add begin for no longer in use */
-if(0)
-{
-    mipi_dsi_cmds_tx(&orise_tx_buf, cmd_sleep_and_off,
-                     ARRAY_SIZE(cmd_sleep_and_off));
-    mdelay(60); //delay more than 3 frames
-}
-/* OPPO 2013-10-10 gousj Add end */
-
     cancel_delayed_work_sync(&techeck_work);
     mdelay(5);
     irq_state--;
     disable_irq(irq);
-
+	set_backlight_pwm(1);
     printk("1080p mipi_orise_lcd_off complete\n");
 
     return 0;
@@ -657,19 +655,98 @@ extern bool bk_device_3528;
 #ifdef CONFIG_VENDOR_EDIT
 int mipi_orise_display_off(struct platform_device *pdev)
 {
-	mipi_dsi_cmds_tx(&orise_tx_buf, cmd_mipi_display_off,
-		ARRAY_SIZE(cmd_mipi_display_off));
-	return 0;
+    mipi_dsi_cmds_tx(&orise_tx_buf, cmd_mipi_display_off,
+                     ARRAY_SIZE(cmd_mipi_display_off));
+    return 0;
 }
 
 int mipi_orise_sleep_in(struct platform_device *pdev)
 {
-	mipi_dsi_cmds_tx(&orise_tx_buf, cmd_mipi_sleep_in,
-		ARRAY_SIZE(cmd_mipi_sleep_in));
-	return 0;
+    mipi_dsi_cmds_tx(&orise_tx_buf, cmd_mipi_sleep_in,
+                     ARRAY_SIZE(cmd_mipi_sleep_in));
+    return 0;
 }
 #endif
 /* OPPO 2013-10-05 gousj Add end */
+
+
+#ifdef PANEL_CABC
+static DEFINE_MUTEX(cabc_mutex);
+static int set_cabc(int level)
+{
+    int ret = 0;
+    pr_info("%s Neal level = %d\n",__func__,level);
+
+    set_backlight_pwm(1);
+
+    mutex_lock(&cabc_mutex);
+    //mipi_dsi_clk_cfg(1);
+    //mipi_set_tx_power_mode(0);
+     /*OPPO 2013-10-11 zhzhyon Add for reason*/
+    if(flag_lcd_off == true)
+    {
+        printk(KERN_INFO "lcd is off,don't allow to set cabc\n");
+        cabc_mode = level;
+        mutex_unlock(&cabc_mutex);
+        return 0;
+    }
+    /*OPPO 2013-10-11 zhzhyon Add end*/
+
+
+    switch(level)
+    {
+        case 0:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_off_sequence,
+                             ARRAY_SIZE(cabc_off_sequence));
+            cabc_mode = CABC_CLOSE;
+            break;
+        case 1:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_user_interface_image_sequence,
+                             ARRAY_SIZE(cabc_user_interface_image_sequence));
+            cabc_mode = CABC_LOW_MODE;
+            break;
+        case 2:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_still_image_sequence,
+                             ARRAY_SIZE(cabc_still_image_sequence));
+            cabc_mode = CABC_MIDDLE_MODE;
+            break;
+        case 3:
+            mipi_dsi_cmds_tx(&orise_tx_buf, cabc_video_image_sequence,
+                             ARRAY_SIZE(cabc_video_image_sequence));
+            cabc_mode = CABC_HIGH_MODE;
+            break;
+        default:
+            pr_err("%s Leavel %d is not supported!\n",__func__,level);
+            ret = -1;
+            break;
+    }
+    //mipi_set_tx_power_mode(1);
+    //mipi_dsi_clk_cfg(0);
+    mutex_unlock(&cabc_mutex);
+    return ret;
+
+}
+/*OPPO 2013-09-27 zhzhyon Add for reason*/
+static ssize_t attr_orise_get_cabc(struct device *dev,
+                                   struct device_attribute *attr, char *buf)
+{
+
+    printk(KERN_INFO "get cabc mode = %d\n",cabc_mode);
+
+    return sprintf(buf, "%d", cabc_mode);
+
+}
+/*OPPO 2013-09-27 zhzhyon Add end*/
+static ssize_t attr_orise_cabc(struct device *dev,
+                               struct device_attribute *attr,
+                               const char *buf, size_t count)
+{
+    int level = 0;
+    sscanf(buf, "%du", &level);
+    set_cabc(level);
+    return count;
+}
+#endif
 
 
 static void mipi_orise_set_backlight(struct msm_fb_data_type *mfd)
@@ -686,12 +763,12 @@ static void mipi_orise_set_backlight(struct msm_fb_data_type *mfd)
         lm3630_bkl_control(bl_level);//3630
         pr_debug("Neal 3630 bkl = %d\n",bl_level);
     }
-      else if(bk_device_3630 == false && bk_device_3528 == true)
+    else if(bk_device_3630 == false && bk_device_3528 == true)
     {
         if(bl_level > 127)
             bl_level = 127;
         lm3528_bkl_control(bl_level);
-		pr_debug("Neal 3528 bkl = %d\n",bl_level);
+        pr_debug("Neal 3528 bkl = %d\n",bl_level);
     }
     globle_bkl = bl_level;
 }
@@ -768,9 +845,16 @@ static DEVICE_ATTR(lcdon, S_IRUGO , attr_orise_lcdon, NULL);
 static DEVICE_ATTR(lcdoff, S_IRUGO , attr_orise_lcdoff, NULL);
 static DEVICE_ATTR(backlight, S_IRUGO , attr_orise_rda_bkl, NULL);
 static DEVICE_ATTR(dispswitch, S_IRUGO , attr_orise_dispswitch, NULL);
+#ifdef PANEL_CABC
+static DEVICE_ATTR(cabc, 0644 , attr_orise_get_cabc, attr_orise_cabc);
+#endif
+
 
 static struct attribute *fs_attrs[] =
 {
+#ifdef PANEL_CABC
+		&dev_attr_cabc.attr,
+#endif
     &dev_attr_reinit.attr,
     &dev_attr_lcdon.attr,
     &dev_attr_lcdoff.attr,
