@@ -2,25 +2,7 @@ ifeq ($(CONFIG_FB_MSM_MDSS),y)
 obj-y += mdss/
 else
 # OPPO Neal modify for n1
-ifeq ($(INIT_DEVICE_N1T), true)
 obj-y := msm_fb.o
-endif
-
-ifeq ($(INIT_DEVICE_N1W), true)
-obj-y := msm_fb.o
-endif
-
-ifeq ($(INIT_DEVICE_N1F), true)
-obj-y := msm_fb.o
-endif
-
-ifeq ($(INIT_DEVICE_X909), true)
-obj-y := msm_fb.o
-endif
-
-ifeq ($(INIT_DEVICE_X909T), true)
-obj-y := msm_fb_909t.o
-endif
 
 obj-$(CONFIG_FB_MSM_LOGO) += logo.o
 obj-$(CONFIG_FB_BACKLIGHT) += msm_fb_bl.o
@@ -98,25 +80,7 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI_TOSHIBA) += mipi_toshiba.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 
 # OPPO Neal modify for n1
-ifeq ($(INIT_DEVICE_N1T), true)
 obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise_n1.o
-endif
-
-ifeq ($(INIT_DEVICE_N1W), true)
-obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise_n1.o
-endif
-
-ifeq ($(INIT_DEVICE_N1F), true)
-obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise_n1.o
-endif
-
-ifeq ($(INIT_DEVICE_X909), true)
-obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise.o
-endif
-
-ifeq ($(INIT_DEVICE_X909T), true)
-obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise_909t.o
-endif
 # OPPO Neal modify end
 
 obj-$(CONFIG_FB_MSM_MIPI_DSI_RENESAS) += mipi_renesas.o
@@ -240,26 +204,8 @@ obj-$(CONFIG_MSM_VIDC_1080P) += vidc/
 obj-$(CONFIG_MSM_VIDC_720P) += vidc/
 
 # OPPO Neal modify for n1
-ifeq ($(INIT_DEVICE_N1T), true)
 obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3630) += lm3630_bl.o
-endif
 
-ifeq ($(INIT_DEVICE_N1W), true)
-obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3630) += lm3630_bl.o
-endif
-
-ifeq ($(INIT_DEVICE_N1F), true)
-obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3630) += lm3630_bl.o
-endif
-
-ifeq ($(INIT_DEVICE_X909), true)
-obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3528) += lm3528_909.o
-endif
-
-ifeq ($(INIT_DEVICE_X909T), true)
-obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3528) += lm3528.o
-obj-$(CONFIG_FB_MSM_MIPI_BACKLIGHT_LM3630) += lm3630_bl_909t.o
-endif
 # OPPO Neal modify end
 clean:
 	rm *.o .*cmd
